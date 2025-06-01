@@ -30,6 +30,11 @@ class Quotation {
       items: items,
     );
   }
+
+  // Add a getter to calculate the total amount
+  double get totalAmount {
+    return items.fold(0, (sum, item) => sum + (item.price * item.quantity));
+  }
 }
 
 class QuotationItem {
