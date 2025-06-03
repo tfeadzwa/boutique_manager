@@ -2,7 +2,7 @@ class Product {
   final int? id;
   String _name; // Changed to private field
   final int stock;
-  final int reorderLevel;
+  final String category;
   final DateTime lastSoldDate;
   int quantity; // Added property
   double price; // Added property
@@ -11,7 +11,7 @@ class Product {
     this.id,
     required String name,
     required this.stock,
-    required this.reorderLevel,
+    required this.category,
     required this.lastSoldDate,
     this.quantity = 0, // Default value
     this.price = 0.0, // Default value
@@ -31,7 +31,7 @@ class Product {
       'id': id,
       'name': _name,
       'stock': stock,
-      'reorderLevel': reorderLevel,
+      'category': category,
       'lastSoldDate': lastSoldDate.toIso8601String(),
       'quantity': quantity,
       'price': price,
@@ -44,7 +44,7 @@ class Product {
       id: map['id'],
       name: map['name'],
       stock: map['stock'],
-      reorderLevel: map['reorderLevel'],
+      category: map['category'] ?? '',
       lastSoldDate: DateTime.parse(map['lastSoldDate']),
       quantity: map['quantity'] ?? 0,
       price: map['price'] ?? 0.0,

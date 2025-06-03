@@ -36,8 +36,10 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         stock INTEGER NOT NULL,
-        reorderLevel INTEGER NOT NULL,
-        lastSoldDate TEXT NOT NULL
+        category TEXT NOT NULL,
+        lastSoldDate TEXT NOT NULL,
+        quantity INTEGER,
+        price REAL
       )
     ''');
 
@@ -371,5 +373,22 @@ class DatabaseHelper {
       whereArgs: [threshold],
     );
     return result.map((map) => Product.fromMap(map)).toList();
+  }
+
+  // Update an existing product
+  Future<int> updateProduct(Product product) async {
+    final db = await database;
+    return await db.update(
+      'products',
+      product.toMap(),
+      where: 'id = ?',
+      whereArgs: [product.id],
+    );
+  }
+
+  // Delete a product by ID
+  Future<int> deleteProduct(int id) async {
+    final db = await database;
+    return await db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 }

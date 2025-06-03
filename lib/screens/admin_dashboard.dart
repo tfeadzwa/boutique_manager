@@ -197,7 +197,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Use the navigation below to manage quotations, invoices, and products. Upgrade to Pro for more features!',
+                    'Use the navigation below to manage quotations, invoices, and products',
                     style: TextStyle(fontSize: 16, color: Colors.green[700]),
                   ),
                 ],

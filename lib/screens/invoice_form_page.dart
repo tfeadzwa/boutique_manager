@@ -39,7 +39,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           id: null,
           name: '',
           stock: 0,
-          reorderLevel: 0,
+          category: '',
           lastSoldDate: DateTime.now(),
           quantity: 1,
           price: 0.0,
