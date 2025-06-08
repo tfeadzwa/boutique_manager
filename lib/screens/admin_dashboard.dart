@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'invoice_list_page.dart';
 import 'quotation_list_page.dart';
 import 'invoice_form_page.dart';
@@ -75,6 +76,58 @@ class _DashboardHomeState extends State<_DashboardHome> {
   List<Product> _lowStockProducts = [];
   bool _loading = true;
 
+  // Demo data for charts
+  final List<BarChartGroupData> _productBarData = [
+    BarChartGroupData(
+      x: 0,
+      barRods: [BarChartRodData(toY: 30, color: Colors.blue)],
+    ),
+    BarChartGroupData(
+      x: 1,
+      barRods: [BarChartRodData(toY: 12, color: Colors.green)],
+    ),
+    BarChartGroupData(
+      x: 2,
+      barRods: [BarChartRodData(toY: 18, color: Colors.orange)],
+    ),
+    BarChartGroupData(
+      x: 3,
+      barRods: [BarChartRodData(toY: 8, color: Colors.purple)],
+    ),
+  ];
+  final List<String> _productLabels = [
+    'Dresses',
+    'Shoes',
+    'Bags',
+    'Accessories',
+  ];
+
+  final List<PieChartSectionData> _invoicePieData = [
+    PieChartSectionData(
+      value: 40,
+      color: Colors.green,
+      title: 'Paid',
+      radius: 38,
+      titleStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    ),
+    PieChartSectionData(
+      value: 20,
+      color: Colors.redAccent,
+      title: 'Unpaid',
+      radius: 34,
+      titleStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    ),
+  ];
+
+  final List<FlSpot> _quotationLineData = [
+    FlSpot(1, 2),
+    FlSpot(2, 3),
+    FlSpot(3, 1.5),
+    FlSpot(4, 4),
+    FlSpot(5, 3.5),
+    FlSpot(6, 5),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +140,183 @@ class _DashboardHomeState extends State<_DashboardHome> {
       _lowStockProducts = products;
       _loading = false;
     });
+  }
+
+  Widget _buildChartsSection() {
+    return Column(
+      children: [
+        Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 2,
+          margin: EdgeInsets.only(bottom: 20),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Product Categories',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                SizedBox(height: 12),
+                SizedBox(
+                  height: 180,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      barGroups: _productBarData,
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 28,
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  idx >= 0 && idx < _productLabels.length
+                                      ? _productLabels[idx]
+                                      : '',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      gridData: FlGridData(show: false),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+                margin: EdgeInsets.only(right: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Invoices',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      SizedBox(
+                        height: 120,
+                        child: PieChart(
+                          PieChartData(
+                            sections: _invoicePieData,
+                            centerSpaceRadius: 24,
+                            sectionsSpace: 2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+                margin: EdgeInsets.only(left: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quotations (Monthly)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      SizedBox(
+                        height: 120,
+                        child: LineChart(
+                          LineChartData(
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: _quotationLineData,
+                                isCurved: true,
+                                color: Colors.blueAccent,
+                                barWidth: 3,
+                                dotData: FlDotData(show: false),
+                              ),
+                            ],
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    return Text(
+                                      'M${value.toInt()}',
+                                      style: TextStyle(fontSize: 10),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            gridData: FlGridData(show: false),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 24),
+      ],
+    );
   }
 
   @override
@@ -124,6 +354,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
             ],
           ),
           SizedBox(height: 32),
+          _buildChartsSection(),
           Wrap(
             spacing: 16,
             runSpacing: 16,
