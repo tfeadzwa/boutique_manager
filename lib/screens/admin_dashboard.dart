@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'invoice_list_page.dart';
 import 'quotation_list_page.dart';
-import 'invoice_form_page.dart';
-import 'quotation_form_page.dart';
+
 import '../views/product_list_page.dart';
 import 'user_management_page.dart';
 import 'admin_profile_page.dart'; // Import the admin profile page
@@ -20,8 +19,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   static final List<Widget> _pages = <Widget>[
     _DashboardHome(),
-    InvoiceFormPage(),
-    QuotationFormPage(),
+    InvoiceListPage(role: 'admin'), // Show invoice list first
+    QuotationListPage(), // Use the Quotation List screen instead of the form
     ProductListPage(),
     AdminProfilePage(), // Add profile page
   ];
@@ -140,6 +139,139 @@ class _DashboardHomeState extends State<_DashboardHome> {
       _lowStockProducts = products;
       _loading = false;
     });
+  }
+
+  Widget _buildProductMetricsSection() {
+    return FutureBuilder<List<Product>>(
+      future: DatabaseHelper.instance.getAllProducts(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(child: Text('Error loading product metrics')),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data == null) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(child: Text('No product data available')),
+          );
+        }
+        final products = snapshot.data!;
+        int available = products.fold(0, (sum, p) => sum + p.stockQty);
+        int sold = products.fold(
+          0,
+          (sum, p) => sum + (p.totalRevenueGenerated > 0 ? 1 : 0),
+        );
+        int totalQtySold = products.fold(
+          0,
+          (sum, p) => sum + p.totalQuantitySold,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 8.0, top: 8.0),
+              child: Text(
+                'Product Metrics Overview',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey[900],
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
+              child: Text(
+                'Monitor your product performance at a glance',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.blueGrey[500],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildMetricCard(
+                    'Products Available',
+                    available.toString(),
+                    Icons.inventory,
+                    Colors.blue,
+                  ),
+                  SizedBox(width: 18),
+                  _buildMetricCard(
+                    'Products Sold',
+                    sold.toString(),
+                    Icons.shopping_cart,
+                    Colors.green,
+                  ),
+                  SizedBox(width: 18),
+                  _buildMetricCard(
+                    'Total Quantity Sold',
+                    totalQtySold.toString(),
+                    Icons.bar_chart,
+                    Colors.purple,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Container(
+        width: 160, // Reduced width
+        height: 160, // Reduced height
+        padding: EdgeInsets.all(14),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 32), // Slightly smaller icon
+            SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22, // Slightly smaller text
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13, // Slightly smaller label
+                color: Colors.grey[800],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildChartsSection() {
@@ -354,7 +486,47 @@ class _DashboardHomeState extends State<_DashboardHome> {
             ],
           ),
           SizedBox(height: 32),
-          _buildChartsSection(),
+          Card(
+            color: Colors.green[50],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome, Admin!',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[800],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Use the navigation below to manage quotations, invoices, and products',
+                    style: TextStyle(fontSize: 16, color: Colors.green[700]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+            child: Text(
+              'Quick Access',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueGrey[900],
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
           Wrap(
             spacing: 16,
             runSpacing: 16,
@@ -406,35 +578,9 @@ class _DashboardHomeState extends State<_DashboardHome> {
               ),
             ],
           ),
-          SizedBox(height: 32),
-          Card(
-            color: Colors.green[50],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome, Admin!',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[800],
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Use the navigation below to manage quotations, invoices, and products',
-                    style: TextStyle(fontSize: 16, color: Colors.green[700]),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          SizedBox(height: 24),
+          _buildProductMetricsSection(),
+          _buildChartsSection(),
           if (_loading) Center(child: CircularProgressIndicator()),
           if (!_loading && _lowStockProducts.isNotEmpty)
             Card(
@@ -473,7 +619,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                           SizedBox(height: 8),
                           ..._lowStockProducts.map(
                             (p) => Text(
-                              '- ${p.name} (Stock: ${p.stock})',
+                              '- ${p.name} (Stock: ${p.stockQty})',
                               style: TextStyle(color: Colors.red[900]),
                             ),
                           ),

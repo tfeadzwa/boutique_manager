@@ -79,55 +79,209 @@ class _ProductListPageState extends State<ProductListPage> {
         title: const Text('Product List'),
         backgroundColor: Colors.orange,
       ),
-      body:
-          _products.isEmpty
-              ? Center(
-                child: Text(
-                  'No products found.',
-                  style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+      body: Column(
+        children: [
+          FutureBuilder<Map<String, int>>(
+            future: _getProductMetrics(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildMetricCard(
+                        'Available',
+                        '--',
+                        Icons.inventory,
+                        Colors.blue,
+                      ),
+                      _buildMetricCard(
+                        'Sold',
+                        '--',
+                        Icons.shopping_cart,
+                        Colors.green,
+                      ),
+                      _buildMetricCard(
+                        'Qty Sold',
+                        '--',
+                        Icons.bar_chart,
+                        Colors.purple,
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final metrics = snapshot.data!;
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildMetricCard(
+                      'Available',
+                      metrics['available'].toString(),
+                      Icons.inventory,
+                      Colors.blue,
+                    ),
+                    _buildMetricCard(
+                      'Sold',
+                      metrics['sold'].toString(),
+                      Icons.shopping_cart,
+                      Colors.green,
+                    ),
+                    _buildMetricCard(
+                      'Qty Sold',
+                      metrics['totalQtySold'].toString(),
+                      Icons.bar_chart,
+                      Colors.purple,
+                    ),
+                  ],
                 ),
-              )
-              : ListView.builder(
-                itemCount: _products.length,
-                itemBuilder: (context, index) {
-                  final p = _products[index];
-                  return Card(
-                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.orange[100],
-                        child: Icon(Icons.inventory, color: Colors.orange[800]),
+              );
+            },
+          ),
+          SizedBox(height: 16),
+          Expanded(
+            child:
+                _products.isEmpty
+                    ? Center(
+                      child: Text(
+                        'No products found.',
+                        style: TextStyle(fontSize: 18, color: Colors.grey[700]),
                       ),
-                      title: Text(
-                        p.name,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Stock: ${p.stock}\nCategory: ${p.category}\nPrice: ₹${p.price.toStringAsFixed(2)}',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.blue),
-                            tooltip: 'Edit',
-                            onPressed: () => _editProduct(p),
+                    )
+                    : ListView.builder(
+                      itemCount: _products.length,
+                      itemBuilder: (context, index) {
+                        final p = _products[index];
+                        return Card(
+                          margin: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
                           ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
-                            tooltip: 'Delete',
-                            onPressed: () => _deleteProduct(p),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
                           ),
-                        ],
-                      ),
+                          elevation: 6,
+                          shadowColor: Colors.orange.withOpacity(0.2),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange[50],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: EdgeInsets.all(12),
+                                  child: Icon(
+                                    Icons.inventory,
+                                    color: Colors.orange[700],
+                                    size: 32,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.name,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.category,
+                                            size: 16,
+                                            color: Colors.grey[600],
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            p.category,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                          SizedBox(width: 16),
+                                          Icon(
+                                            Icons.attach_money,
+                                            size: 16,
+                                            color: Colors.green[700],
+                                          ),
+                                          SizedBox(width: 2),
+                                          Text(
+                                            ' 24${p.unitPrice.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.green[800],
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.inventory_2,
+                                            size: 16,
+                                            color: Colors.blue[700],
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Stock: ${p.stockQty}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.blue[900],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        color: Colors.blueAccent,
+                                        size: 26,
+                                      ),
+                                      tooltip: 'Edit',
+                                      onPressed: () => _editProduct(p),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.delete,
+                                        color: Colors.redAccent,
+                                        size: 26,
+                                      ),
+                                      tooltip: 'Delete',
+                                      onPressed: () => _deleteProduct(p),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _navigateToAddProduct,
         icon: Icon(Icons.add),
@@ -135,5 +289,53 @@ class _ProductListPageState extends State<ProductListPage> {
         backgroundColor: Colors.orange,
       ),
     );
+  }
+
+  Widget _buildMetricCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        width: 140,
+        height: 110,
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 32),
+            SizedBox(width: 12),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, int>> _getProductMetrics() async {
+    final products = await DatabaseHelper.instance.getAllProducts();
+    int available = products.fold(0, (sum, p) => sum + p.stockQty);
+    int sold = products.fold(
+      0,
+      (sum, p) => sum + (p.totalRevenueGenerated > 0 ? 1 : 0),
+    );
+    int totalQtySold = products.fold(0, (sum, p) => sum + p.totalQuantitySold);
+    return {'available': available, 'sold': sold, 'totalQtySold': totalQtySold};
   }
 }

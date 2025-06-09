@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6, // Bump version to force migration for userId column
+      version: 9, // Bump version to force migration for totalQuantitySold
       onCreate: _createDb,
       onUpgrade: _upgradeDb,
     );
@@ -34,12 +34,24 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        productId TEXT NOT NULL,
         name TEXT NOT NULL,
-        stock INTEGER NOT NULL,
         category TEXT NOT NULL,
-        lastSoldDate TEXT NOT NULL,
-        quantity INTEGER,
-        price REAL
+        description TEXT,
+        imageUrl TEXT,
+        restockThreshold INTEGER,
+        stockQty INTEGER,
+        unitPrice REAL,
+        status TEXT,
+        discontinued INTEGER,
+        expiry_date TEXT,
+        createdAt TEXT NOT NULL,
+        createdBy TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        updatedBy TEXT NOT NULL,
+        lastSoldAt TEXT,
+        totalRevenueGenerated INTEGER,
+        totalQuantitySold INTEGER
       )
     ''');
 
@@ -62,15 +74,22 @@ class DatabaseHelper {
       )
     ''');
     await db.execute('''
-      CREATE TABLE IF NOT EXISTS invoices (
+      CREATE TABLE invoices (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoiceId TEXT NOT NULL,
+        cashier TEXT,
         customerName TEXT NOT NULL,
-        date TEXT NOT NULL,
-        totalAmount REAL NOT NULL,
-        isPaid INTEGER NOT NULL,
-        products TEXT NOT NULL,
-        userId INTEGER,
-        FOREIGN KEY (userId) REFERENCES users(id)
+        discount REAL,
+        grandTotal REAL,
+        items TEXT NOT NULL,
+        notes TEXT,
+        paymentMethod TEXT,
+        soldBy TEXT,
+        status TEXT,
+        tax REAL,
+        timestamp TEXT,
+        totalAmount REAL,
+        totalQuantity INTEGER
       )
     ''');
 
@@ -126,6 +145,49 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE quotations ADD COLUMN userId INTEGER');
       await db.execute('ALTER TABLE invoices ADD COLUMN userId INTEGER');
     }
+    if (oldVersion < 7) {
+      // Add new columns for the new product schema if they do not exist
+      await db.execute('ALTER TABLE products ADD COLUMN productId TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN description TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN imageUrl TEXT');
+      await db.execute(
+        'ALTER TABLE products ADD COLUMN restockThreshold INTEGER',
+      );
+      await db.execute('ALTER TABLE products ADD COLUMN stockQty INTEGER');
+      await db.execute('ALTER TABLE products ADD COLUMN unitPrice REAL');
+      await db.execute('ALTER TABLE products ADD COLUMN status TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN discontinued INTEGER');
+      await db.execute('ALTER TABLE products ADD COLUMN expiry_date TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN createdAt TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN createdBy TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN updatedAt TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN updatedBy TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN lastSoldAt TEXT');
+      await db.execute(
+        'ALTER TABLE products ADD COLUMN totalRevenueGenerated INTEGER',
+      );
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE invoices ADD COLUMN invoiceId TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN cashier TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN discount REAL');
+      await db.execute('ALTER TABLE invoices ADD COLUMN grandTotal REAL');
+      await db.execute('ALTER TABLE invoices ADD COLUMN items TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN notes TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN paymentMethod TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN soldBy TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN status TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN tax REAL');
+      await db.execute('ALTER TABLE invoices ADD COLUMN timestamp TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN totalQuantity INTEGER');
+      await db.execute('ALTER TABLE invoices ADD COLUMN grandTotal REAL');
+    }
+    if (oldVersion < 9) {
+      // Add totalQuantitySold column if not exists
+      await db.execute(
+        'ALTER TABLE products ADD COLUMN totalQuantitySold INTEGER DEFAULT 0',
+      );
+    }
   }
 
   // Insert a new quotation, now with userId
@@ -171,29 +233,33 @@ class DatabaseHelper {
     if (userId != null) data['userId'] = userId;
     final invoiceId = await db.insert('invoices', data);
 
+    // Decrease product stock for each product in the invoice items
     for (var item in invoice.items) {
-      await db.insert('invoice_items', item.toMap()..['invoiceId'] = invoiceId);
-    }
-
-    // Decrease product stock for each product in the invoice
-    for (var product in invoice.products) {
-      if (product.id != null) {
-        // Get current stock
-        final List<Map<String, dynamic>> result = await db.query(
+      final List<Map<String, dynamic>> result = await db.query(
+        'products',
+        where: 'productId = ?',
+        whereArgs: [item.productId],
+      );
+      if (result.isNotEmpty) {
+        final currentStock = result.first['stockQty'] as int;
+        final newStock = currentStock - item.quantity;
+        // Increment totalRevenueGenerated and totalQuantitySold
+        final currentRevenue =
+            (result.first['totalRevenueGenerated'] ?? 0) as num;
+        final newRevenue = currentRevenue + (item.unitPrice * item.quantity);
+        final currentQtySold = (result.first['totalQuantitySold'] ?? 0) as int;
+        final newQtySold = currentQtySold + item.quantity;
+        await db.update(
           'products',
-          where: 'id = ?',
-          whereArgs: [product.id],
+          {
+            'stockQty': newStock,
+            'totalRevenueGenerated': newRevenue,
+            'totalQuantitySold': newQtySold,
+            'lastSoldAt': DateTime.now().toIso8601String(),
+          },
+          where: 'productId = ?',
+          whereArgs: [item.productId],
         );
-        if (result.isNotEmpty) {
-          final currentStock = result.first['stock'] as int;
-          final newStock = currentStock - (product.quantity);
-          await db.update(
-            'products',
-            {'stock': newStock},
-            where: 'id = ?',
-            whereArgs: [product.id],
-          );
-        }
       }
     }
     return invoiceId;
@@ -233,15 +299,7 @@ class DatabaseHelper {
   Future<List<Invoice>> getAllInvoices() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.query('invoices');
-
-    List<Invoice> invoices = [];
-    for (var map in result) {
-      final items = await _getInvoiceItems(
-        map['id'],
-      ); // Fetch items for each invoice
-      invoices.add(Invoice.fromMap(map, items)); // Pass both map and items
-    }
-    return invoices;
+    return result.map((map) => Invoice.fromMap(map)).toList();
   }
 
   // Get all products
@@ -264,17 +322,6 @@ class DatabaseHelper {
       'quotation_items',
       where: 'quotationId = ?',
       whereArgs: [quotationId],
-    );
-    return result.map((map) => QuotationItem.fromMap(map)).toList();
-  }
-
-  // Helper method to get invoice items
-  Future<List<QuotationItem>> _getInvoiceItems(int invoiceId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> result = await db.query(
-      'invoice_items',
-      where: 'invoiceId = ?',
-      whereArgs: [invoiceId],
     );
     return result.map((map) => QuotationItem.fromMap(map)).toList();
   }
@@ -356,12 +403,7 @@ class DatabaseHelper {
     } else {
       result = await db.query('invoices');
     }
-    List<Invoice> invoices = [];
-    for (var map in result) {
-      final items = await _getInvoiceItems(map['id']);
-      invoices.add(Invoice.fromMap(map, items));
-    }
-    return invoices;
+    return result.map((map) => Invoice.fromMap(map)).toList();
   }
 
   // Get products with stock less than a threshold (default 5)
@@ -369,7 +411,7 @@ class DatabaseHelper {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.query(
       'products',
-      where: 'stock < ?',
+      where: 'stockQty < ?',
       whereArgs: [threshold],
     );
     return result.map((map) => Product.fromMap(map)).toList();

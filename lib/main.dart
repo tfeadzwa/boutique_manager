@@ -4,8 +4,11 @@ import 'screens/login_page.dart';
 import 'screens/invoice_list_page.dart'; // or your main home page
 import 'screens/admin_dashboard.dart';
 import 'screens/user_dashboard.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeNotifications();
   runApp(MyApp());
 }
 
@@ -24,6 +27,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Boutique Manager',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -48,7 +52,6 @@ class MyApp extends StatelessWidget {
           return LoginPage();
         },
       ),
-      debugShowCheckedModeBanner: false,
     );
   }
 }

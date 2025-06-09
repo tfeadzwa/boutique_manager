@@ -6,7 +6,7 @@ import '../models/product.dart';
 class InvoiceFormPage extends StatefulWidget {
   final Invoice? invoiceToEdit;
 
-  InvoiceFormPage({this.invoiceToEdit}); // 👈 Accept invoiceToEdit!
+  InvoiceFormPage({this.invoiceToEdit});
 
   @override
   _InvoiceFormPageState createState() => _InvoiceFormPageState();
@@ -14,63 +14,72 @@ class InvoiceFormPage extends StatefulWidget {
 
 class _InvoiceFormPageState extends State<InvoiceFormPage> {
   final _formKey = GlobalKey<FormState>();
-
   final TextEditingController customerNameController = TextEditingController();
-  List<Product> products = [];
+  List<Product> allProducts = [];
+  List<InvoiceItem> items = [];
   double totalAmount = 0.0;
-  bool isPaid = false; // Add a field to track the "Paid" status
+  bool isPaid = false;
 
   @override
   void initState() {
     super.initState();
+    _loadProducts();
     if (widget.invoiceToEdit != null) {
-      // 👈 Pre-fill fields if editing
       customerNameController.text = widget.invoiceToEdit!.customerName;
-      products = List<Product>.from(widget.invoiceToEdit!.products);
+      items = List<InvoiceItem>.from(widget.invoiceToEdit!.items);
       totalAmount = widget.invoiceToEdit!.totalAmount;
-      isPaid = widget.invoiceToEdit!.isPaid; // Pre-fill "Paid" status
+      isPaid = widget.invoiceToEdit!.status == 'Paid';
     }
   }
 
-  void _addProduct() {
+  Future<void> _loadProducts() async {
+    allProducts = await DatabaseHelper.instance.getAllProducts();
+    setState(() {});
+  }
+
+  void _addInvoiceItem(Product product) {
     setState(() {
-      products.add(
-        Product(
-          id: null,
-          name: '',
-          stock: 0,
-          category: '',
-          lastSoldDate: DateTime.now(),
+      items.add(
+        InvoiceItem(
+          productId: product.productId,
+          productName: product.name,
           quantity: 1,
-          price: 0.0,
+          unitPrice: product.unitPrice,
+          total: product.unitPrice,
         ),
       );
     });
   }
 
   void _calculateTotal() {
-    totalAmount = products.fold(
+    totalAmount = items.fold(
       0,
-      (sum, item) => sum + (item.price * item.quantity),
+      (sum, item) => sum + (item.unitPrice * item.quantity),
     );
   }
 
   Future<void> _saveInvoice() async {
-    if (_formKey.currentState!.validate() && products.isNotEmpty) {
+    if (_formKey.currentState!.validate() && items.isNotEmpty) {
       _calculateTotal();
-
       final invoice = Invoice(
-        id: widget.invoiceToEdit?.id, // 👈 Important for updating
+        id: widget.invoiceToEdit?.id,
+        invoiceId:
+            widget.invoiceToEdit?.invoiceId ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
+        cashier: 'Cashier', // Replace with actual user
         customerName: customerNameController.text,
-        products: products,
-        items: [], // Not used here
+        discount: 0.0,
+        grandTotal: totalAmount,
+        items: items,
+        notes: '',
+        paymentMethod: 'Cash',
+        soldBy: 'Cashier', // Replace with actual user
+        status: isPaid ? 'PAID' : 'UNPAID',
+        tax: 0.0,
+        timestamp: DateTime.now(),
         totalAmount: totalAmount,
-        date:
-            widget.invoiceToEdit?.date ??
-            DateTime.now(), // Keep original date if editing
-        isPaid: isPaid, // Save the "Paid" status
+        totalQuantity: items.fold(0, (sum, item) => sum + item.quantity),
       );
-
       if (widget.invoiceToEdit == null) {
         await DatabaseHelper.instance.insertInvoice(invoice);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -82,7 +91,6 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           SnackBar(content: Text('Invoice updated successfully!')),
         );
       }
-
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,7 +117,6 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Customer Name Section
               Text(
                 'Customer Details',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -125,15 +132,13 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                     (value) => value!.isEmpty ? 'Enter customer name' : null,
               ),
               SizedBox(height: 20),
-
-              // Products Section
               Text(
                 'Products',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
-              ...products.map((product) {
-                int index = products.indexOf(product);
+              ...items.map((item) {
+                int index = items.indexOf(item);
                 return Card(
                   margin: EdgeInsets.symmetric(vertical: 8.0),
                   elevation: 2,
@@ -141,32 +146,59 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
-                        TextFormField(
-                          initialValue: product.name,
+                        DropdownButtonFormField<String>(
+                          value: item.productId,
+                          items:
+                              allProducts
+                                  .map(
+                                    (product) => DropdownMenuItem(
+                                      value: product.productId,
+                                      child: Text(product.name),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (val) {
+                            final selected = allProducts.firstWhere(
+                              (p) => p.productId == val,
+                            );
+                            setState(() {
+                              items[index] = InvoiceItem(
+                                productId: selected.productId,
+                                productName: selected.name,
+                                quantity: item.quantity,
+                                unitPrice: selected.unitPrice,
+                                total: selected.unitPrice * item.quantity,
+                              );
+                            });
+                          },
                           decoration: InputDecoration(
-                            labelText: 'Product Name',
+                            labelText: 'Product',
                             border: OutlineInputBorder(),
                           ),
-                          onChanged: (val) => product.name = val,
-                          validator:
-                              (val) =>
-                                  val!.isEmpty ? 'Enter product name' : null,
                         ),
                         SizedBox(height: 10),
                         Row(
                           children: [
                             Expanded(
                               child: TextFormField(
-                                initialValue: product.quantity.toString(),
+                                initialValue: item.quantity.toString(),
                                 decoration: InputDecoration(
                                   labelText: 'Quantity',
                                   border: OutlineInputBorder(),
                                 ),
                                 keyboardType: TextInputType.number,
                                 onChanged: (val) {
-                                  product.quantity = int.tryParse(val) ?? 1;
-                                  _calculateTotal(); // Recalculate total
-                                  setState(() {}); // Update UI
+                                  int qty = int.tryParse(val) ?? 1;
+                                  setState(() {
+                                    items[index] = InvoiceItem(
+                                      productId: item.productId,
+                                      productName: item.productName,
+                                      quantity: qty,
+                                      unitPrice: item.unitPrice,
+                                      total: item.unitPrice * qty,
+                                    );
+                                    _calculateTotal();
+                                  });
                                 },
                                 validator:
                                     (val) =>
@@ -178,39 +210,51 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                             SizedBox(width: 10),
                             Expanded(
                               child: TextFormField(
-                                initialValue: product.price.toStringAsFixed(2),
+                                initialValue: item.unitPrice.toStringAsFixed(2),
                                 decoration: InputDecoration(
-                                  labelText: 'Price',
+                                  labelText: 'Unit Price',
                                   border: OutlineInputBorder(),
                                 ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (val) {
-                                  product.price = double.tryParse(val) ?? 0.0;
-                                  _calculateTotal(); // Recalculate total
-                                  setState(() {}); // Update UI
-                                },
-                                validator:
-                                    (val) =>
-                                        (double.tryParse(val!) ?? 0.0) <= 0
-                                            ? 'Enter price'
-                                            : null,
+                                enabled: false,
+                                style: TextStyle(color: Colors.grey[700]),
                               ),
                             ),
                           ],
+                        ),
+                        SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                items.removeAt(index);
+                                _calculateTotal();
+                              });
+                            },
+                          ),
                         ),
                       ],
                     ),
                   ),
                 );
               }).toList(),
-              TextButton.icon(
-                onPressed: _addProduct,
-                icon: Icon(Icons.add),
-                label: Text('Add Product'),
+              DropdownButtonFormField<Product>(
+                hint: Text('Add Product'),
+                items:
+                    allProducts
+                        .map(
+                          (product) => DropdownMenuItem(
+                            value: product,
+                            child: Text(product.name),
+                          ),
+                        )
+                        .toList(),
+                onChanged: (product) {
+                  if (product != null) _addInvoiceItem(product);
+                },
               ),
               SizedBox(height: 20),
-
-              // Mark as Paid Section
               Text(
                 'Invoice Status',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -231,8 +275,6 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                 ],
               ),
               SizedBox(height: 20),
-
-              // Save Button
               ElevatedButton.icon(
                 onPressed: _saveInvoice,
                 icon: Icon(Icons.save),

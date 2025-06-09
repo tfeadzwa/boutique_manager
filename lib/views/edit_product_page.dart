@@ -21,9 +21,9 @@ class _EditProductPageState extends State<EditProductPage> {
   void initState() {
     super.initState();
     _name = widget.product.name;
-    _stock = widget.product.stock;
+    _stock = widget.product.stockQty;
     _category = widget.product.category;
-    _price = widget.product.price;
+    _price = widget.product.unitPrice;
   }
 
   @override
@@ -122,15 +122,32 @@ class _EditProductPageState extends State<EditProductPage> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
+                    final now = DateTime.now();
                     final updatedProduct = Product(
                       id: widget.product.id,
+                      productId: widget.product.productId,
                       name: _name,
-                      stock: _stock,
                       category: _category,
-                      lastSoldDate: widget.product.lastSoldDate,
-                      price: _price,
+                      description: '',
+                      imageUrl: '',
+                      restockThreshold: 5,
+                      stockQty: _stock,
+                      unitPrice: _price,
+                      status: 'active',
+                      discontinued: false,
+                      expiryDate: null,
+                      createdAt: widget.product.createdAt,
+                      createdBy: widget.product.createdBy,
+                      updatedAt: now,
+                      updatedBy: 'admin',
+                      lastSoldAt: widget.product.lastSoldAt,
+                      totalRevenueGenerated:
+                          widget.product.totalRevenueGenerated,
                     );
                     await DatabaseHelper.instance.updateProduct(updatedProduct);
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Product updated!')));
                     Navigator.pop(context, true);
                   }
                 },

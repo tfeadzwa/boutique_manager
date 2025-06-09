@@ -1,53 +1,100 @@
 class Product {
   final int? id;
-  String _name; // Changed to private field
-  final int stock;
+  final String productId;
+  final String name;
   final String category;
-  final DateTime lastSoldDate;
-  int quantity; // Added property
-  double price; // Added property
+  final String description;
+  final String imageUrl;
+  final int restockThreshold;
+  final int stockQty;
+  final double unitPrice;
+  final String status;
+  final bool discontinued;
+  final DateTime? expiryDate;
+  final DateTime createdAt;
+  final String createdBy;
+  final DateTime updatedAt;
+  final String updatedBy;
+  final DateTime? lastSoldAt;
+  final int totalRevenueGenerated;
+  final int totalQuantitySold;
 
   Product({
     this.id,
-    required String name,
-    required this.stock,
+    required this.productId,
+    required this.name,
     required this.category,
-    required this.lastSoldDate,
-    this.quantity = 0, // Default value
-    this.price = 0.0, // Default value
-  }) : _name = name;
+    required this.description,
+    required this.imageUrl,
+    required this.restockThreshold,
+    required this.stockQty,
+    required this.unitPrice,
+    required this.status,
+    required this.discontinued,
+    this.expiryDate,
+    required this.createdAt,
+    required this.createdBy,
+    required this.updatedAt,
+    required this.updatedBy,
+    this.lastSoldAt,
+    required this.totalRevenueGenerated,
+    this.totalQuantitySold = 0,
+  });
 
-  // Getter for name
-  String get name => _name;
-
-  // Setter for name
-  set name(String value) {
-    _name = value;
-  }
-
-  // Convert to Map (for SQLite)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': _name,
-      'stock': stock,
+      'productId': productId,
+      'name': name,
       'category': category,
-      'lastSoldDate': lastSoldDate.toIso8601String(),
-      'quantity': quantity,
-      'price': price,
+      'description': description,
+      'imageUrl': imageUrl,
+      'restockThreshold': restockThreshold,
+      'stockQty': stockQty,
+      'unitPrice': unitPrice,
+      'status': status,
+      'discontinued': discontinued ? 1 : 0,
+      'expiry_date': expiryDate?.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+      'createdBy': createdBy,
+      'updatedAt': updatedAt.toIso8601String(),
+      'updatedBy': updatedBy,
+      'lastSoldAt': lastSoldAt?.toIso8601String(),
+      'totalRevenueGenerated': totalRevenueGenerated,
+      'totalQuantitySold': totalQuantitySold,
     };
   }
 
-  // Convert from Map
   factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
       id: map['id'],
+      productId: map['productId'],
       name: map['name'],
-      stock: map['stock'],
-      category: map['category'] ?? '',
-      lastSoldDate: DateTime.parse(map['lastSoldDate']),
-      quantity: map['quantity'] ?? 0,
-      price: map['price'] ?? 0.0,
+      category: map['category'],
+      description: map['description'],
+      imageUrl: map['imageUrl'],
+      restockThreshold: map['restockThreshold'],
+      stockQty: map['stockQty'],
+      unitPrice:
+          map['unitPrice'] is int
+              ? (map['unitPrice'] as int).toDouble()
+              : map['unitPrice'],
+      status: map['status'],
+      discontinued: map['discontinued'] == 1,
+      expiryDate:
+          map['expiry_date'] != null
+              ? DateTime.tryParse(map['expiry_date'])
+              : null,
+      createdAt: DateTime.parse(map['createdAt']),
+      createdBy: map['createdBy'],
+      updatedAt: DateTime.parse(map['updatedAt']),
+      updatedBy: map['updatedBy'],
+      lastSoldAt:
+          map['lastSoldAt'] != null
+              ? DateTime.tryParse(map['lastSoldAt'])
+              : null,
+      totalRevenueGenerated: map['totalRevenueGenerated'] ?? 0,
+      totalQuantitySold: map['totalQuantitySold'] ?? 0,
     );
   }
 }
